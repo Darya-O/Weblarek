@@ -1,27 +1,16 @@
-import type { BuyerValidationErrors, IBuyer, TPayment } from '../../types/index';
+import { IBuyer, TFormErrors } from "../../types/index";
+import { IEvents } from "../Base/Events";
 
 export class Buyer {
-  private payment: TPayment | null = null;
-  private email: string = '';
-  private phone: string = '';
-  private address: string = '';
-
-setData(data: Partial<IBuyer>): void {
-  if ('payment' in data) {
-    this.payment = data.payment ?? null;
+  protected payment: IBuyer["payment"] = "";
+  protected email = "";
+  protected phone = "";
+  protected address = "";
+  constructor(protected events: IEvents) {}
+  setData(data: Partial<IBuyer>): void {
+    Object.assign(this, data);
+    this.events.emit("buyer:changed");
   }
-  if ('email' in data) {
-    this.email = data.email ?? '';
-  }
-  if ('phone' in data) {
-    this.phone = data.phone ?? '';
-  }
-  if ('address' in data) {
-    this.address = data.address ?? '';
-  }
-}
-
-
   getData(): IBuyer {
     return {
       payment: this.payment,
@@ -30,30 +19,27 @@ setData(data: Partial<IBuyer>): void {
       address: this.address,
     };
   }
-
   clear(): void {
-    this.payment = null;
-    this.email = '';
-    this.phone = '';
-    this.address = '';
+    this.payment = "";
+    this.email = "";
+    this.phone = "";
+    this.address = "";
+    this.events.emit("buyer:changed");
   }
-
-  validate(): BuyerValidationErrors {
-    const errors: BuyerValidationErrors = {};
-
-    if (this.payment === null) {
-      errors.payment = 'Не выбран вид оплаты';
+  validate(): TFormErrors {
+    const errors: TFormErrors = {};
+    if (!this.payment) {
+      errors.payment = "Не выбран способ оплаты";
     }
-    if (!this.email || this.email.trim() === '') {
-      errors.email = 'Укажите email';
+    if (!this.email.trim()) {
+      errors.email = "Укажите email";
     }
-    if (!this.phone || this.phone.trim() === '') {
-      errors.phone = 'Укажите телефон';
+    if (!this.phone.trim()) {
+      errors.phone = "Укажите телефон";
     }
-    if (!this.address || this.address.trim() === '') {
-      errors.address = 'Укажите адрес';
+    if (!this.address.trim()) {
+      errors.address = "Укажите адрес";
     }
-
     return errors;
   }
 }

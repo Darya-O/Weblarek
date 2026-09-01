@@ -1,42 +1,58 @@
-import { IProduct } from '../../types/index';
+import { IEvents } from "../Base/Events";
+import { IProduct } from "../../types/index";
 
-/*Модель корзины.Хранит товары, выбранные пользователем.*/
 export class Cart {
-  private items: IProduct[] = [];  /*Товары в корзине.*/
+  protected items: IProduct[] = [];
+
+  constructor(protected events: IEvents) {}
+
   getItems(): IProduct[] {
     return this.items;
-  } /* Возвращает копию массива товаров корзины.*/
+  }
 
-  /* Добавляет товар в корзину. Один и тот же товар нельзя добавить повторно.*/
   addItem(product: IProduct): void {
+    if (this.hasItem(product.id)) {
+      return;
+    }
+
     this.items.push(product);
+
+    this.emitChanges();
   }
 
-  /* Удаляет товар из корзины.*/
-  removeItem(productId: string): void {
-    this.items = this.items.filter(item => item.id !== productId);
+  removeItem(id: string): void {
+    const previousLength = this.items.length;
+
+    this.items = this.items.filter((item) => item.id !== id);
+
+    if (this.items.length !== previousLength) {
+      this.emitChanges();
+    }
   }
 
-  /* Полностью очищает корзину.*/
   clear(): void {
+    if (this.items.length === 0) {
+      return;
+    }
+
     this.items = [];
+
+    this.emitChanges();
   }
 
-  /* Если цена товара равна null, такой товар добавляет к общей сумме 0.*/
-  getTotalPrice(): number {
-    return this.items.reduce((total, item) => {
-      const price = item.price ?? 0;
-      return total + price;
-    }, 0);
+  getTotal(): number {
+    return this.items.reduce((total, item) => total + (item.price ?? 0), 0);
   }
 
-  /* Возвращает количество товаров в корзине. */
-  getItemCount(): number {
+  getCount(): number {
     return this.items.length;
   }
 
-  /* Проверяет, находится ли товар в корзине.*/
-  hasItem(productId: string): boolean {
-    return this.items.some(item => item.id === productId);
+  hasItem(id: string): boolean {
+    return this.items.some((item) => item.id === id);
+  }
+
+  protected emitChanges(): void {
+    this.events.emit("basket:changed");
   }
 }
