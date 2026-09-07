@@ -24,6 +24,7 @@ import {
     IContactsFormData,
     TPayment,
     IOrder,
+    IProductsResponse,
 } from "./types";
 
 import { Header } from "./components/view/header";
@@ -89,11 +90,17 @@ const contactsForm = new ContactsForm(
     cloneTemplate<HTMLFormElement>(contactsTemplate),
 );
 
-// Создание компонента успешного заказа
-const success = new Success(cloneTemplate<HTMLElement>(successTemplate), {
-    onClick: () => {
-        modal.close();
-    },
+// Создание компонента успешного заказа 
+const success = new Success(cloneTemplate<HTMLElement>(successTemplate), { 
+    onClick: () => { 
+        // Эмитим событие вместо прямого вызова modal.close()
+        events.emit('success:close');
+    }, 
+});
+
+// Обработчик события закрытия успешного заказа
+events.on('success:close', () => {
+    modal.close();
 });
 
 // Функция отображения содержимого корзины
@@ -147,7 +154,7 @@ events.on("catalog:changed", () => {
             title: product.title,
             price: product.price,
             category: product.category,
-            image: `${CDN_URL}${product.image}`,
+            image: product.image,
         });
     });
 
@@ -165,38 +172,38 @@ events.on<ICardEvent>("card:select", ({ id }) => {
     catalog.setPreview(product);
 });
 
-// Изменение выбранного товара
-events.on("preview:changed", () => {
-    const product = catalog.getPreview();
-    if (!product) {
-        return;
-    }
-
-    const isSelected = basket.hasItem(product.id);
-    const isUnavailable = product.price === null;
-
-    const buttonText = isUnavailable
-        ? "Недоступно"
-        : isSelected
-            ? "Удалить из корзины"
-            : "В корзину";
-
-    const previewContent = previewCard.render({
-        title: product.title,
-        price: product.price,
-        category: product.category,
-        image: `${CDN_URL}${product.image}`,
-        description: product.description,
-        buttonText,
-        buttonDisabled: isUnavailable,
-    });
-
-    modal.render({
-        content: previewContent,
-    });
-
-    modal.open();
-});
+events.on("preview:changed", () => { 
+    const product = catalog.getPreview(); 
+    if (!product) { 
+        return; 
+    } 
+ 
+    const isSelected = basket.hasItem(product.id); 
+    const isUnavailable = product.price === null; 
+ 
+    const buttonText = isUnavailable 
+        ? "Недоступно" 
+        : isSelected 
+            ? "Удалить из корзины" 
+            : "В корзину"; 
+ 
+    
+    const previewContent = previewCard.render({ 
+        title: product.title, 
+        price: product.price, 
+        category: product.category, 
+        image: product.image,
+        description: product.description, 
+        buttonText, 
+        buttonDisabled: isUnavailable, 
+    }); 
+ 
+    modal.render({ 
+        content: previewContent, 
+    }); 
+ 
+    modal.open(); 
+}); 
 
 // Действие с товаром в подробной карточке
 events.on("card:action", () => {
@@ -347,25 +354,33 @@ events.on("contacts:submit", () => {
         });
 });
 
-// Закрытие модального окна
-events.on("modal:close", () => {
-    modal.close();
-});
-
-// Начальное состояние интерфейса
-basket.clear();
-buyer.clear();
-
-// проверка 
-console.log('API_URL:', API_URL);
-console.log('CDN_URL:', CDN_URL);
-console.log('webLarekApi:', webLarekApi);
-
-// Получение товаров с сервера
+// Закрытие модального окна 
+events.on("modal:close", () => { 
+    modal.close(); 
+}); 
+ 
+// Начальное состояние интерфейса 
+basket.clear(); 
+buyer.clear(); 
+ 
+// Проверка  
+console.log('API_URL:', API_URL); 
+console.log('CDN_URL:', CDN_URL); 
+console.log('webLarekApi:', webLarekApi); 
+ 
+// Получение товаров с сервера 
 webLarekApi
     .getProducts()
-    .then((response) => {
-        catalog.setProducts((response as { items: any[] }).items);
+    .then((response: IProductsResponse) => {
+        // Формируем полный путь к изображению ДО передачи в модель
+        const productsWithFullImage = response.items.map((product) => ({
+            ...product,
+            image: `${CDN_URL}${product.image}`
+        }));
+        
+        // Передаём в модель уже готовые данные
+        catalog.setProducts(productsWithFullImage);
+        console.log(`Каталог обновлён: ${productsWithFullImage.length} товаров`);
     })
     .catch((error) => {
         console.error("Ошибка загрузки каталога:", error);
